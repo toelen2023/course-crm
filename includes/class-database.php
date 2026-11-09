@@ -2,29 +2,78 @@
 defined('ABSPATH') || exit;
 
 class CCR_Database {
-
     public static function tables() {
         global $wpdb;
         $p = $wpdb->prefix . 'coursecrm_';
-
         return array(
-            'clients'   => $p . 'clients',
-            'orders'    => $p . 'orders',
-            'payments'  => $p . 'payments',
-            'contacts'  => $p . 'contacts',
-            'calendar'  => $p . 'calendar',
+            'leads' => $p . 'leads',
+            'lead_requests' => $p . 'lead_requests',
+            'clients' => $p . 'clients',
+            'orders' => $p . 'orders',
+            'payments' => $p . 'payments',
+            'contacts' => $p . 'contacts',
+            'calendar' => $p . 'calendar',
         );
     }
 
     public static function activate() {
+        self::install();
+    }
+
+    public static function maybe_upgrade() {
+        if (get_option('ccr_db_version') !== CCR_VERSION) {
+            self::install();
+        }
+    }
+
+    private static function install() {
         global $wpdb;
-
         require_once ABSPATH . 'wp-admin/includes/upgrade.php';
-
         $t = self::tables();
         $charset = $wpdb->get_charset_collate();
-
         $sql = array();
+
+        $sql[] = "CREATE TABLE {$t['leads']} (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            first_name VARCHAR(100) NOT NULL DEFAULT '',
+            email VARCHAR(190) NOT NULL DEFAULT '',
+            phone VARCHAR(50) NOT NULL DEFAULT '',
+            phone_digits VARCHAR(30) NOT NULL DEFAULT '',
+            status VARCHAR(30) NOT NULL DEFAULT 'new',
+            source VARCHAR(100) NOT NULL DEFAULT '',
+            manager_id BIGINT UNSIGNED NULL,
+            client_id BIGINT UNSIGNED NULL,
+            notes LONGTEXT NULL,
+            converted_at DATETIME NULL,
+            created_at DATETIME NOT NULL,
+            updated_at DATETIME NOT NULL,
+            PRIMARY KEY  (id),
+            KEY email (email),
+            KEY phone_digits (phone_digits),
+            KEY status (status),
+            KEY manager_id (manager_id),
+            KEY client_id (client_id),
+            KEY updated_at (updated_at)
+        ) $charset;";
+
+        $sql[] = "CREATE TABLE {$t['lead_requests']} (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            lead_id BIGINT UNSIGNED NOT NULL,
+            course_id BIGINT UNSIGNED NULL,
+            course_title VARCHAR(255) NOT NULL DEFAULT '',
+            teacher VARCHAR(255) NOT NULL DEFAULT '',
+            course_stream VARCHAR(100) NOT NULL DEFAULT '',
+            page_title VARCHAR(255) NOT NULL DEFAULT '',
+            page_url TEXT NULL,
+            source VARCHAR(100) NOT NULL DEFAULT 'contact-form-7',
+            order_id BIGINT UNSIGNED NULL,
+            created_at DATETIME NOT NULL,
+            PRIMARY KEY  (id),
+            KEY lead_id (lead_id),
+            KEY course_id (course_id),
+            KEY order_id (order_id),
+            KEY created_at (created_at)
+        ) $charset;";
 
         $sql[] = "CREATE TABLE {$t['clients']} (
             id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -32,17 +81,18 @@ class CCR_Database {
             last_name VARCHAR(100) NOT NULL DEFAULT '',
             email VARCHAR(190) NOT NULL DEFAULT '',
             phone VARCHAR(50) NOT NULL DEFAULT '',
+            phone_digits VARCHAR(30) NOT NULL DEFAULT '',
             manager_id BIGINT UNSIGNED NULL,
-            status VARCHAR(30) NOT NULL DEFAULT 'new',
+            status VARCHAR(30) NOT NULL DEFAULT 'active',
             source VARCHAR(100) NOT NULL DEFAULT '',
             notes LONGTEXT NULL,
             created_at DATETIME NOT NULL,
             updated_at DATETIME NOT NULL,
-            PRIMARY KEY (id),
+            PRIMARY KEY  (id),
             KEY email (email),
-            KEY phone (phone),
-            KEY status (status),
-            KEY manager_id (manager_id)
+            KEY phone_digits (phone_digits),
+            KEY manager_id (manager_id),
+            KEY status (status)
         ) $charset;";
 
         $sql[] = "CREATE TABLE {$t['orders']} (
@@ -57,7 +107,7 @@ class CCR_Database {
             comment TEXT NULL,
             created_at DATETIME NOT NULL,
             updated_at DATETIME NOT NULL,
-            PRIMARY KEY (id),
+            PRIMARY KEY  (id),
             KEY client_id (client_id),
             KEY course_id (course_id),
             KEY manager_id (manager_id),
@@ -74,14 +124,15 @@ class CCR_Database {
             comment TEXT NULL,
             created_by BIGINT UNSIGNED NULL,
             created_at DATETIME NOT NULL,
-            PRIMARY KEY (id),
+            PRIMARY KEY  (id),
             KEY order_id (order_id),
             KEY payment_date (payment_date)
         ) $charset;";
 
         $sql[] = "CREATE TABLE {$t['contacts']} (
             id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-            client_id BIGINT UNSIGNED NOT NULL,
+            client_id BIGINT UNSIGNED NULL,
+            lead_id BIGINT UNSIGNED NULL,
             order_id BIGINT UNSIGNED NULL,
             manager_id BIGINT UNSIGNED NULL,
             contact_type VARCHAR(30) NOT NULL DEFAULT 'other',
@@ -90,8 +141,9 @@ class CCR_Database {
             comment LONGTEXT NULL,
             next_contact_at DATETIME NULL,
             created_at DATETIME NOT NULL,
-            PRIMARY KEY (id),
+            PRIMARY KEY  (id),
             KEY client_id (client_id),
+            KEY lead_id (lead_id),
             KEY order_id (order_id),
             KEY manager_id (manager_id),
             KEY next_contact_at (next_contact_at)
@@ -99,7 +151,8 @@ class CCR_Database {
 
         $sql[] = "CREATE TABLE {$t['calendar']} (
             id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-            client_id BIGINT UNSIGNED NOT NULL,
+            client_id BIGINT UNSIGNED NULL,
+            lead_id BIGINT UNSIGNED NULL,
             order_id BIGINT UNSIGNED NULL,
             contact_id BIGINT UNSIGNED NULL,
             google_event_id VARCHAR(255) NOT NULL DEFAULT '',
@@ -110,8 +163,9 @@ class CCR_Database {
             status VARCHAR(20) NOT NULL DEFAULT 'active',
             created_at DATETIME NOT NULL,
             updated_at DATETIME NOT NULL,
-            PRIMARY KEY (id),
+            PRIMARY KEY  (id),
             KEY client_id (client_id),
+            KEY lead_id (lead_id),
             KEY order_id (order_id),
             KEY contact_id (contact_id),
             KEY google_event_id (google_event_id),
@@ -121,11 +175,14 @@ class CCR_Database {
         foreach ($sql as $statement) {
             dbDelta($statement);
         }
-
         update_option('ccr_db_version', CCR_VERSION);
     }
 
     public static function now() {
         return current_time('mysql');
+    }
+
+    public static function phone_digits($phone) {
+        return preg_replace('/\D+/', '', (string) $phone);
     }
 }

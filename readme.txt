@@ -1,30 +1,26 @@
-Course CRM 0.1.0
+Course CRM 0.2.0
 
-Initial foundation:
-- Dedicated CRM database tables.
-- Clients.
-- Orders.
-- Payments table.
-- Communication history table.
-- Google Calendar table.
-- CF7 capture via wpcf7_before_send_mail.
-- Basic WordPress admin CRM screens.
-- Google OAuth settings and event creation API foundation.
+Что добавлено:
+- Отдельная таблица лидов coursecrm_leads.
+- История заявок одного человека в coursecrm_lead_requests.
+- Интеграция Contact Form 7: your-name, your-email, phone_full (приоритет), your-tel (резерв).
+- Дополнительные поля заявки: course, course_id, teacher, course_stream.
+- Заголовок и URL страницы берутся из метаданных отправки CF7, если доступны.
+- Повторные заявки с тем же email или нормализованным телефоном связываются с существующим лидом.
+- Если заявку отправляет человек, который уже стал клиентом, лид снова появляется в работе с сохранённой связью на существующего клиента; повторная конвертация использует ту же карточку клиента.
+- Разделы «Новые лиды», «В работе», «Отказы», «Все лиды», «Клиенты».
+- Действия «В работу», «Отказ», «В клиенты».
+- Поиск по имени, email и телефону в лидах и клиентах.
+- Конвертация лида создаёт клиента и заказ по последней заявке, если такой заказ ещё не создан.
+- Существующие таблицы заказов, платежей, контактов и календаря сохраняются; в contacts/calendar добавлена связь с lead_id.
 
-CF7 expected field names:
-first_name
-last_name
-email
-phone
-course_id
+Важно:
+1. Перед обновлением сделайте резервную копию базы данных и файлов сайта.
+2. Обновление версии создаёт новые таблицы и корректирует схему существующих таблиц через dbDelta.
+3. Текущая форма CF7 должна содержать поля your-name, your-email, your-tel. phone_full может быть скрытым полем формы; если оно заполнено, CRM использует его вместо your-tel.
+4. Чтобы сохранять курс, преподавателя и поток, добавьте в форму реальные скрытые поля [hidden course], [hidden teacher], [hidden course_stream]. Для ID курса используйте [hidden course_id].
+5. В текущей версии поиск показывает до 200 результатов; полноценная пагинация и фильтры будут следующим этапом.
+6. Разделы CRM пока доступны администраторам с правом manage_options.
+7. Google Calendar сохраняет прежнюю базовую реализацию из версии 0.1.0. Интеграция календаря непосредственно с лидами ещё не реализована.
 
-Important:
-The plugin creates its own database tables and does not store CRM clients as a WordPress CPT.
-The course_id refers to the existing WordPress course CPT post ID.
-
-Google Calendar:
-1. Create a Google Cloud project.
-2. Enable Google Calendar API.
-3. Create OAuth credentials.
-4. Add the callback URL shown in Course CRM -> Google Calendar.
-5. Enter Client ID, Client Secret and Calendar ID in the plugin settings.
+Плагин не удаляет таблицы при деактивации.
