@@ -12,7 +12,7 @@ defined('ABSPATH') || exit;
 define('CCR_PLUGIN_FILE', __FILE__);
 define('CCR_PLUGIN_PATH', plugin_dir_path(__FILE__));
 define('CCR_PLUGIN_URL', plugin_dir_url(__FILE__));
-define('CCR_VERSION', '0.2.0');
+define('CCR_VERSION', '0.3.0');
 
 require_once CCR_PLUGIN_PATH . 'includes/class-database.php';
 require_once CCR_PLUGIN_PATH . 'includes/class-leads.php';
